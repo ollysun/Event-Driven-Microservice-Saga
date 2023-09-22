@@ -1,5 +1,6 @@
 package com.moses.eshop.productservice.query_apis.eventhandler;
 
+import com.moses.core.events.ProductReservedEvent;
 import com.moses.eshop.productservice.core.entity.ProductEntity;
 import com.moses.eshop.productservice.core.events.ProductCreatedEvent;
 import com.moses.eshop.productservice.core.repository.ProductsRepository;

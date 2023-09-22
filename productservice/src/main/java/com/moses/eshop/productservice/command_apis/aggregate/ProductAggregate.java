@@ -1,5 +1,7 @@
 package com.moses.eshop.productservice.command_apis.aggregate;
 
+import com.moses.core.command.ReserveProductCommand;
+import com.moses.core.events.ProductReservedEvent;
 import com.moses.eshop.productservice.command_apis.commands.CreateProductCommand;
 import com.moses.eshop.productservice.core.events.ProductCreatedEvent;
 import org.axonframework.commandhandling.CommandHandler;
@@ -50,5 +52,31 @@ public class ProductAggregate {
         this.price = productCreatedEvent.getPrice();
         this.title = productCreatedEvent.getTitle();
     }
+
+    @CommandHandler
+    public void handle(ReserveProductCommand reserveProductCommand) {
+
+        if(quantity < reserveProductCommand.getQuantity()) {
+            throw new IllegalArgumentException("Insufficient number of items in stock");
+        }
+
+        ProductReservedEvent productReservedEvent = ProductReservedEvent.builder()
+                .orderId(reserveProductCommand.getOrderId())
+                .productId(reserveProductCommand.getProductId())
+                .quantity(reserveProductCommand.getQuantity())
+                .userId(reserveProductCommand.getUserId())
+                .build();
+
+        AggregateLifecycle.apply(productReservedEvent);
+
+    }
+
+
+
+    @EventSourcingHandler
+    public void on(ProductReservedEvent productReservedEvent) {
+        this.quantity -= productReservedEvent.getQuantity();
+    }
+
 
 }
