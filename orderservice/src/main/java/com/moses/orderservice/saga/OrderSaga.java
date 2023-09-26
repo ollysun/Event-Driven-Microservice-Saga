@@ -1,5 +1,6 @@
 package com.moses.orderservice.saga;
 
+import com.moses.core.command.ProcessPaymentCommand;
 import com.moses.core.command.ReserveProductCommand;
 import com.moses.core.events.ProductReservedEvent;
 import com.moses.core.model.User;
@@ -17,6 +18,8 @@ import org.axonframework.spring.stereotype.Saga;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.UUID;
 
 @Saga
 public class OrderSaga {
@@ -45,6 +48,7 @@ public class OrderSaga {
         LOGGER.info("OrderCreatedEvent handled for orderId: " + reserveProductCommand.getOrderId() +
                 " and productId: " + reserveProductCommand.getProductId() );
 
+        // publish command
         commandGateway.send(reserveProductCommand, new CommandCallback<ReserveProductCommand, Object>() {
 
             @Override
@@ -92,6 +96,30 @@ public class OrderSaga {
         }
 
         LOGGER.info("Successfully fetched user payment details for user " + userPaymentDetails.getFirstName());
+
+        ProcessPaymentCommand proccessPaymentCommand = ProcessPaymentCommand.builder()
+                .orderId(productReservedEvent.getOrderId())
+                .paymentDetails(userPaymentDetails.getPaymentDetails())
+                .paymentId(UUID.randomUUID().toString())
+                .build();
+
+        String result = null;
+        try {
+            // publish the command
+            result = commandGateway.sendAndWait(proccessPaymentCommand);
+        } catch(Exception ex) {
+            LOGGER.error(ex.getMessage());
+            // Start compensating transaction
+           // cancelProductReservation(productReservedEvent,ex.getMessage());
+            return;
+        }
+
+        if(result == null) {
+            LOGGER.info("The ProcessPaymentCommand resulted in NULL. Initiating a compensating transaction");
+            // Start compensating transaction
+           // cancelProductReservation(productReservedEvent, "Could not proccess user payment with provided payment details");
+        }
+
 
     }
 
